@@ -14,14 +14,14 @@ from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 from supabase import create_client
 
-from .config import Settings
+from .config import VALID_SECTIONS, Settings
 from .db import GalaxisDB
 from .errors import DbError
 from .tools import get_project_info, search_projects
 
 logger = logging.getLogger("galaxis_hub")
 logger.setLevel(logging.INFO)
-_handler = logging.StreamHandler(sys.stdout)
+_handler = logging.StreamHandler(sys.stderr)
 _handler.setFormatter(logging.Formatter("%(message)s"))
 logger.addHandler(_handler)
 
@@ -62,7 +62,7 @@ def build_server(settings: Settings) -> Server:
                 name="search_projects",
                 description=(
                     "Find projects by client name. Returns up to 10 matches: "
-                    "[{id, client_name, website}]."
+                    "[{UUID, client_name, website}]."
                 ),
                 inputSchema={
                     "type": "object",
@@ -80,7 +80,9 @@ def build_server(settings: Settings) -> Server:
                 description=(
                     "Fetch a project's generated content. Pass a project_id from "
                     "search_projects. Optional sections filter returns only those "
-                    "section names (see schema enum)."
+                    "section names (see schema enum). Unknown section names are "
+                    "skipped and reported in an `unknown_sections` field; the call "
+                    "does not fail."
                 ),
                 inputSchema={
                     "type": "object",
@@ -91,12 +93,43 @@ def build_server(settings: Settings) -> Server:
                         },
                         "sections": {
                             "type": "array",
-                            "items": {"type": "string"},
+                            "items": {
+                                "type": "string",
+                                "enum": list(VALID_SECTIONS),
+                            },
                             "description": (
-                                "Optional list of section names. Valid: kyc, avatar, "
-                                "combined, keywords, google_adcopy, fb_adcopy, "
-                                "meta_audience, google_audience_1, google_audience_2, "
-                                "customer_journey, competitors, seasonality."
+                                "Optional list of sections to retrieve. "
+                                "Use ONLY the bare section name strings below "
+                                "— do NOT include the description text.\n"
+                                "\n"
+                                "  kyc, avatar, combined, keywords, "
+                                "google_adcopy, fb_adcopy, meta_audience, "
+                                "google_audience_1, google_audience_2, "
+                                "customer_journey, competitors, seasonality\n"
+                                "\n"
+                                "Section meanings (for context only — never "
+                                "include in the value):\n"
+                                "- kyc: Business profile (company overview, "
+                                "products, target market, positioning).\n"
+                                "- avatar: Ideal customer personas.\n"
+                                "- keywords: SEO and paid search keywords.\n"
+                                "- google_adcopy: Generated Google Ads copy.\n"
+                                "- fb_adcopy: Generated Facebook ad copy.\n"
+                                "- meta_audience: Meta Ads audience "
+                                "recommendations.\n"
+                                "- google_audience_1: Primary Google Ads "
+                                "audience.\n"
+                                "- google_audience_2: Secondary Google Ads "
+                                "audience.\n"
+                                "- customer_journey: Customer journey "
+                                "mapping.\n"
+                                "- competitors: Competitor analysis.\n"
+                                "- seasonality: Seasonal trends.\n"
+                                "\n"
+                                "Unknown names are skipped, not rejected. "
+                                "Skipped names are returned in the response's "
+                                "`unknown_sections` field so a typo can be "
+                                "noticed without the call failing."
                             ),
                         },
                     },
@@ -116,8 +149,6 @@ def build_server(settings: Settings) -> Server:
                 result = search_projects(db, arguments.get("query", ""))
             elif name == "get_project_info":
                 result = get_project_info(db, project_id or "", sections)
-            else:
-                result = {"error": "unknown_tool", "tool": name}
         except DbError:
             result = {"error": "db_error"}
             _audit(
