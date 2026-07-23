@@ -16,17 +16,43 @@ cp .env.example .env
 # edit .env with real SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
 ```
 
+You don't need to `source .venv/bin/activate` — every command below uses
+`uv run`, which activates the venv for that one command.
+
+By default the server speaks MCP over stdio. To run it as an HTTP
+server (reachable at `http://127.0.0.1:8000/mcp`), set
+`GALAXIS_TRANSPORT=http` in the environment (or in `.env` if your
+loader reads it). No code change needed.
+
 ## Run
 
 ```bash
+# default: stdio (for Claude desktop / opencode as a subprocess)
 uv run python -m galaxis_hub
-# or, equivalently:
+# or equivalently:
 uv run galaxis-hub
+
+# HTTP (for testing from a web client or remote opencode):
+GALAXIS_TRANSPORT=http uv run python -m galaxis_hub
 ```
 
-The server speaks MCP over stdio. The agent client (Claude desktop,
-opencode, etc.) launches this as a subprocess and pipes JSON-RPC
-over its stdin/stdout.
+In stdio mode, the agent client (Claude desktop, opencode, etc.)
+launches this as a subprocess and pipes JSON-RPC over its stdin/stdout.
+In HTTP mode, the server is reachable at `http://127.0.0.1:8000/mcp`.
+
+## Smoke-test in the inspector
+
+The FastMCP CLI ships an inspector:
+
+```bash
+uv run fastmcp dev src/galaxis_hub/server.py:mcp
+```
+
+The `mcp[cli]` inspector also still works, same syntax:
+
+```bash
+uv run mcp dev src/galaxis_hub/server.py:mcp
+```
 
 ## Wire it into your MCP client
 
@@ -38,18 +64,17 @@ match your local clone.
 ```json
 {
   "mcp": {
-    "servers": {
-      "galaxis-hub": {
-        "command": "uv",
-        "args": [
-          "--directory",
-          "/absolute/path/to/galaxis-hub/APP",
-          "run",
-          "python",
-          "-m",
-          "galaxis_hub"
-        ]
-      }
+    "galaxis-hub": {
+      "type": "local",
+      "command": [
+        "uv",
+        "--directory",
+        "/absolute/path/to/galaxis-hub/APP",
+        "run",
+        "python",
+        "-m",
+        "galaxis_hub"
+      ]
     }
   }
 }
