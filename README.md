@@ -20,9 +20,11 @@ You don't need to `source .venv/bin/activate` — every command below uses
 `uv run`, which activates the venv for that one command.
 
 By default the server speaks MCP over stdio. To run it as an HTTP
-server (reachable at `http://127.0.0.1:8000/mcp`), set
-`GALAXIS_TRANSPORT=http` in the environment (or in `.env` if your
-loader reads it). No code change needed.
+server (reachable at `http://127.0.0.1:8000/mcp`), export
+`GALAXIS_TRANSPORT=http` in your shell before launching. **Do not
+put it in `.env`** — only the two Supabase vars above are loaded from
+`.env`; the transport flag is read directly from the process
+environment. No code change needed.
 
 ## Run
 

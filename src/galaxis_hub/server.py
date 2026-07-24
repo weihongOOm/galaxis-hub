@@ -23,9 +23,15 @@ from .errors import DbError
 from .tools import get_project_info as get_project_info_impl
 from .tools import search_projects as search_projects_impl
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    stream=sys.stderr,
+    force=True,
+)
 logger = logging.getLogger("galaxis_hub")
 logger.setLevel(logging.INFO)
-logger.addHandler(logging.StreamHandler(sys.stderr))
+logger.propagate = True
 
 VALID_SECTIONS_LITERAL = Literal[*VALID_SECTIONS]  # type: ignore[valid-type]
 
